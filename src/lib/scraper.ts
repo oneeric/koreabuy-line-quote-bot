@@ -33,6 +33,9 @@ export async function extractProductInfo(url: string): Promise<ProductInfo> {
 }
 
 async function fetchProductHtml(url: string) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+
   const response = await fetch(url, {
     headers: {
       "User-Agent":
@@ -41,7 +44,9 @@ async function fetchProductHtml(url: string) {
       "Accept-Language": "ko-KR,ko;q=0.9,zh-TW;q=0.8,en;q=0.7",
     },
     next: { revalidate: 300 },
+    signal: controller.signal,
   });
+  clearTimeout(timeout);
 
   if (!response.ok) {
     throw new Error(`Fetch failed: ${response.status}`);
@@ -106,22 +111,24 @@ async function extractWithGemini(url: string, html: string): Promise<Partial<Pro
     `PAGE_TEXT: ${compactText}`,
   ].join("\n");
 
-  const response = await fetch(
-    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": apiKey,
-      },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          responseMimeType: "application/json",
-        },
-      }),
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+
+  const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": apiKey,
     },
-  );
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        responseMimeType: "application/json",
+      },
+    }),
+    signal: controller.signal,
+  });
+  clearTimeout(timeout);
 
   if (!response.ok) return {};
 

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { buildQuoteReply } from "@/lib/quote";
 
 export const runtime = "nodejs";
+export const maxDuration = 10;
 
 type LineTextEvent = {
   type: "message";
@@ -31,8 +32,12 @@ export async function POST(req: NextRequest) {
     events.map(async (event) => {
       if (!isLineTextEvent(event)) return;
 
-      const replyText = await buildQuoteReply(event.message.text);
-      await replyToLine(event.replyToken, replyText);
+      try {
+        const replyText = await buildQuoteReply(event.message.text);
+        await replyToLine(event.replyToken, replyText);
+      } catch (error) {
+        console.error("Failed to handle LINE event", error);
+      }
     }),
   );
 
