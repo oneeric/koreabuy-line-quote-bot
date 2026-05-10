@@ -22,7 +22,7 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json(
       {
         error:
-          "尚未設定 UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN，無法從 UI 儲存設定。",
+          "尚未設定 GITHUB_TOKEN / GITHUB_OWNER / GITHUB_REPO，無法從 UI 儲存設定。",
       },
       { status: 503 },
     );

@@ -52,14 +52,14 @@ export function AdminSettings({ initialConfig, writable, protectedByToken }: Pro
           <p>這裡改的是伺服器設定，LINE bot 會直接使用。</p>
         </div>
         <span className={writable ? "badge ok" : "badge warn"}>
-          {writable ? "可儲存" : "需接資料庫"}
+          {writable ? "可儲存" : "需接 GitHub"}
         </span>
       </div>
 
       {!writable ? (
         <div className="notice">
-          目前尚未設定 Upstash Redis。請在 Vercel Environment Variables 加上
-          <code>UPSTASH_REDIS_REST_URL</code> 和 <code>UPSTASH_REDIS_REST_TOKEN</code>。
+          目前尚未設定 GitHub 寫入權限。請在 Vercel Environment Variables 加上
+          <code>GITHUB_TOKEN</code>、<code>GITHUB_OWNER</code> 和 <code>GITHUB_REPO</code>。
         </div>
       ) : null}
 

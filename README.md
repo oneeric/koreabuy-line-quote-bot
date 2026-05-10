@@ -30,8 +30,10 @@ LINE_CHANNEL_SECRET=
 LINE_CHANNEL_ACCESS_TOKEN=
 GEMINI_API_KEY=
 ADMIN_TOKEN=請換成一組只有你知道的管理密碼
-UPSTASH_REDIS_REST_URL=
-UPSTASH_REDIS_REST_TOKEN=
+GITHUB_TOKEN=
+GITHUB_OWNER=oneeric
+GITHUB_REPO=koreabuy-line-quote-bot
+SETTINGS_PATH=settings.json
 KRW_TO_TWD_RATE=0.025
 AGENCY_FEE_RATE=0.15
 DEFAULT_SHIPPING_TWD=200
@@ -61,15 +63,19 @@ https://你的網域.vercel.app/api/line/webhook
 
 首頁是管理 UI，可以調整匯率、代購費、預設運費、匯款資訊與購買須知。
 
-要讓首頁按下「儲存設定」後真的生效，需要在 Vercel 加三個環境變數：
+設定會存成 GitHub repo 裡的 `settings.json`。bot 每次報價會讀 GitHub 上最新的 JSON，不需要資料庫，也不用每次改設定都重新部署。
+
+要讓首頁按下「儲存設定」後真的寫入 GitHub，需要在 Vercel 加這些環境變數：
 
 ```txt
 ADMIN_TOKEN=一組只有你知道的管理密碼
-UPSTASH_REDIS_REST_URL=Upstash Redis REST URL
-UPSTASH_REDIS_REST_TOKEN=Upstash Redis REST Token
+GITHUB_TOKEN=GitHub fine-grained token，需有此 repo 的 Contents read/write 權限
+GITHUB_OWNER=oneeric
+GITHUB_REPO=koreabuy-line-quote-bot
+SETTINGS_PATH=settings.json
 ```
 
-如果還沒設定 Upstash Redis，bot 仍會使用 Vercel 內的預設環境變數報價，只是首頁不能儲存。
+如果還沒設定 GitHub token，bot 仍會使用 Vercel 內的預設環境變數報價，只是首頁不能儲存。
 
 ## 本機開發
 

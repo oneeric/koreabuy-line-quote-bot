@@ -7,10 +7,10 @@ export type QuoteConfig = {
   noticeText: string;
 };
 
-const SETTINGS_KEY = "koreabuy:quote-settings";
+const SETTINGS_PATH = process.env.SETTINGS_PATH || "settings.json";
 
 export async function getQuoteConfig(): Promise<QuoteConfig> {
-  const stored = await readStoredSettings();
+  const stored = await readGitHubSettings();
   return {
     ...getDefaultQuoteConfig(),
     ...stored,
@@ -32,7 +32,7 @@ export function getDefaultQuoteConfig(): QuoteConfig {
 
 export async function saveQuoteConfig(input: QuoteConfig) {
   const config = normalizeQuoteConfig(input);
-  await redisCommand(["SET", SETTINGS_KEY, JSON.stringify(config)]);
+  await saveGitHubSettings(config);
   return config;
 }
 
@@ -48,55 +48,85 @@ export function normalizeQuoteConfig(input: QuoteConfig): QuoteConfig {
 }
 
 export function hasWritableSettingsStore() {
-  return Boolean(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
-}
-
-async function readStoredSettings(): Promise<Partial<QuoteConfig>> {
-  if (!hasWritableSettingsStore()) return {};
-
-  const stored = await redisCommand<string | null>(["GET", SETTINGS_KEY]);
-  if (!stored) return {};
-
-  try {
-    return normalizeQuoteConfig(JSON.parse(stored) as QuoteConfig);
-  } catch {
-    return {};
-  }
-}
-
-async function redisCommand<T = unknown>(command: Array<string | number>) {
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-
-  if (!url || !token) {
-    throw new Error("Missing UPSTASH_REDIS_REST_URL or UPSTASH_REDIS_REST_TOKEN");
-  }
-
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(command),
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    throw new Error(`Settings store failed: ${response.status} ${await response.text()}`);
-  }
-
-  const payload = (await response.json()) as { result?: T; error?: string };
-  if (payload.error) {
-    throw new Error(payload.error);
-  }
-
-  return payload.result as T;
+  return Boolean(process.env.GITHUB_TOKEN && process.env.GITHUB_OWNER && process.env.GITHUB_REPO);
 }
 
 function readNumberEnv(name: string, fallback: number) {
   const value = Number(process.env[name]);
   return Number.isFinite(value) ? value : fallback;
+}
+
+async function readGitHubSettings(): Promise<Partial<QuoteConfig>> {
+  const owner = process.env.GITHUB_OWNER;
+  const repo = process.env.GITHUB_REPO;
+  if (!owner || !repo) return {};
+
+  const response = await fetch(
+    `https://raw.githubusercontent.com/${owner}/${repo}/main/${SETTINGS_PATH}`,
+    { cache: "no-store" },
+  );
+
+  if (response.status === 404) return {};
+  if (!response.ok) return {};
+
+  try {
+    return normalizeQuoteConfig((await response.json()) as QuoteConfig);
+  } catch {
+    return {};
+  }
+}
+
+async function saveGitHubSettings(config: QuoteConfig) {
+  const token = process.env.GITHUB_TOKEN;
+  const owner = process.env.GITHUB_OWNER;
+  const repo = process.env.GITHUB_REPO;
+  if (!token || !owner || !repo) {
+    throw new Error("Missing GITHUB_TOKEN, GITHUB_OWNER or GITHUB_REPO");
+  }
+
+  const endpoint = `https://api.github.com/repos/${owner}/${repo}/contents/${SETTINGS_PATH}`;
+  const current = await getGitHubFile(endpoint, token);
+  const content = Buffer.from(`${JSON.stringify(config, null, 2)}\n`, "utf8").toString(
+    "base64",
+  );
+
+  const response = await fetch(endpoint, {
+    method: "PUT",
+    headers: {
+      Accept: "application/vnd.github+json",
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      "X-GitHub-Api-Version": "2022-11-28",
+    },
+    body: JSON.stringify({
+      message: "Update quote settings",
+      content,
+      sha: current?.sha,
+      branch: "main",
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`GitHub settings update failed: ${await response.text()}`);
+  }
+}
+
+async function getGitHubFile(endpoint: string, token: string) {
+  const response = await fetch(endpoint, {
+    headers: {
+      Accept: "application/vnd.github+json",
+      Authorization: `Bearer ${token}`,
+      "X-GitHub-Api-Version": "2022-11-28",
+    },
+    cache: "no-store",
+  });
+
+  if (response.status === 404) return null;
+  if (!response.ok) {
+    throw new Error(`GitHub settings read failed: ${await response.text()}`);
+  }
+
+  return (await response.json()) as { sha: string };
 }
 
 function ensurePositiveNumber(value: number, label: string) {
