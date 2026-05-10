@@ -1,9 +1,9 @@
 import { createHmac, timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { buildQuoteReply } from "@/lib/quote";
+import { buildImageQuoteReply, buildQuoteReply } from "@/lib/quote";
 
 export const runtime = "nodejs";
-export const maxDuration = 10;
+export const maxDuration = 15;
 
 type LineTextEvent = {
   type: "message";
@@ -14,8 +14,17 @@ type LineTextEvent = {
   };
 };
 
+type LineImageEvent = {
+  type: "message";
+  replyToken: string;
+  message: {
+    type: "image";
+    id: string;
+  };
+};
+
 type LineWebhookBody = {
-  events?: Array<LineTextEvent | { type: string; replyToken?: string }>;
+  events?: Array<LineTextEvent | LineImageEvent | { type: string; replyToken?: string }>;
 };
 
 export async function POST(req: NextRequest) {
@@ -33,16 +42,27 @@ export async function POST(req: NextRequest) {
 
   await Promise.all(
     events.map(async (event) => {
-      if (!isLineTextEvent(event)) return;
-
       try {
-        console.log("LINE text event", {
-          textLength: event.message.text.length,
-          replyTokenLength: event.replyToken.length,
-        });
-        const replyText = await buildQuoteReply(event.message.text);
-        await replyToLine(event.replyToken, replyText);
-        console.log("LINE reply sent");
+        if (isLineTextEvent(event)) {
+          console.log("LINE text event", {
+            textLength: event.message.text.length,
+            replyTokenLength: event.replyToken.length,
+          });
+          const replyText = await buildQuoteReply(event.message.text);
+          await replyToLine(event.replyToken, replyText);
+          console.log("LINE text reply sent");
+        }
+
+        if (isLineImageEvent(event)) {
+          console.log("LINE image event", {
+            messageIdLength: event.message.id.length,
+            replyTokenLength: event.replyToken.length,
+          });
+          const image = await fetchLineMessageContent(event.message.id);
+          const replyText = await buildImageQuoteReply(image.data, image.mimeType);
+          await replyToLine(event.replyToken, replyText);
+          console.log("LINE image reply sent");
+        }
       } catch (error) {
         console.error("Failed to handle LINE event", error);
       }
@@ -79,6 +99,39 @@ function isLineTextEvent(event: unknown): event is LineTextEvent {
     candidate.message?.type === "text" &&
     typeof candidate.message.text === "string"
   );
+}
+
+function isLineImageEvent(event: unknown): event is LineImageEvent {
+  if (!event || typeof event !== "object") return false;
+  const candidate = event as LineImageEvent;
+  return (
+    candidate.type === "message" &&
+    typeof candidate.replyToken === "string" &&
+    candidate.message?.type === "image" &&
+    typeof candidate.message.id === "string"
+  );
+}
+
+async function fetchLineMessageContent(messageId: string) {
+  const token = process.env.LINE_CHANNEL_ACCESS_TOKEN;
+  if (!token) {
+    throw new Error("Missing LINE_CHANNEL_ACCESS_TOKEN");
+  }
+
+  const response = await fetch(`https://api-data.line.me/v2/bot/message/${messageId}/content`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`LINE content fetch failed: ${response.status} ${await response.text()}`);
+  }
+
+  return {
+    data: Buffer.from(await response.arrayBuffer()),
+    mimeType: response.headers.get("content-type") || "image/jpeg",
+  };
 }
 
 async function replyToLine(replyToken: string, text: string) {

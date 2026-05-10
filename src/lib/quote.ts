@@ -6,6 +6,13 @@ type QuoteInput = {
   manualKrwPrice?: number;
 };
 
+type ProductForQuote = {
+  title?: string;
+  priceKrw: number;
+  source: "manual" | "scrape" | "gemini" | "image";
+  url?: string;
+};
+
 const URL_PATTERN = /https?:\/\/[^\s]+/i;
 const MANUAL_PRICE_PATTERNS = [
   /(?:價格|price|金額)[:：\s]*([0-9,]+)\s*(?:krw|韓元|원|₩)?/i,
@@ -16,7 +23,7 @@ export async function buildQuoteReply(message: string) {
   const input = parseQuoteInput(message);
   if (!input) {
     return [
-      "請貼商品連結給我，我會幫你估算台幣報價。",
+      "請貼商品連結或商品截圖給我，我會幫你估算台幣報價。",
       "如果你已經知道韓元價格，也可以這樣傳：",
       "價格 59000 https://商品連結",
     ].join("\n");
@@ -38,14 +45,53 @@ export async function buildQuoteReply(message: string) {
     ].join("\n");
   }
 
-  const quote = calculateQuote(product.priceKrw, config);
-  const sourceLabel = product.source === "manual" ? "手動提供" : "自動擷取";
+  return renderQuoteReply(
+    {
+      title: product.title,
+      priceKrw: product.priceKrw,
+      source: product.source,
+      url: input.url,
+    },
+    config,
+  );
+}
 
-  return [
+export async function buildImageQuoteReply(image: Buffer, mimeType: string) {
+  const config = await getQuoteConfig();
+  const product = await extractImageProductInfo(image, mimeType);
+
+  if (!product.priceKrw) {
+    return [
+      "我暫時無法從截圖判讀韓元價格。",
+      "請截到商品名稱與價格，或直接傳：價格 59000 https://商品連結",
+    ].join("\n");
+  }
+
+  return renderQuoteReply(
+    {
+      title: product.title || "截圖商品",
+      priceKrw: product.priceKrw,
+      source: "image",
+    },
+    config,
+  );
+}
+
+function renderQuoteReply(product: ProductForQuote, config: QuoteConfig) {
+  const quote = calculateQuote(product.priceKrw, config);
+  const sourceLabel = getSourceLabel(product.source);
+  const lines = [
     `${config.shopName} 報價`,
     "",
-    `商品：${product.title || "商品連結"}`,
-    `連結：${input.url}`,
+    `商品：${product.title || "商品"}`,
+  ];
+
+  if (product.url) {
+    lines.push(`連結：${product.url}`);
+  }
+
+  return [
+    ...lines,
     `韓幣售價：₩${formatNumber(product.priceKrw)}（${sourceLabel}）`,
     `匯率：1 KRW = ${config.krwToTwdRate} TWD`,
     "",
@@ -91,6 +137,77 @@ function calculateQuote(priceKrw: number, config: QuoteConfig) {
   };
 }
 
+function getSourceLabel(source: ProductForQuote["source"]) {
+  if (source === "manual") return "手動提供";
+  if (source === "image") return "截圖判讀";
+  return "自動擷取";
+}
+
 function formatNumber(value: number) {
   return new Intl.NumberFormat("zh-TW").format(value);
+}
+
+async function extractImageProductInfo(image: Buffer, mimeType: string) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return {};
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+
+  const response = await fetch(
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": apiKey,
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              {
+                text: [
+                  "你是韓國電商截圖價格辨識器。請只回 JSON，不要 Markdown。",
+                  "請從圖片中找商品名稱與韓元售價。只接受 KRW/₩/원 的商品價格。",
+                  "不要把折扣率、評價數、運費、點數、數量、台幣換算當作商品售價。",
+                  "若看不到明確韓元商品售價，priceKrw 為 null。",
+                  "{\"title\":\"商品名稱或空字串\",\"priceKrw\":59000}",
+                ].join("\n"),
+              },
+              {
+                inline_data: {
+                  mime_type: mimeType,
+                  data: image.toString("base64"),
+                },
+              },
+            ],
+          },
+        ],
+        generationConfig: {
+          responseMimeType: "application/json",
+        },
+      }),
+      signal: controller.signal,
+    },
+  );
+  clearTimeout(timeout);
+
+  if (!response.ok) return {};
+
+  const payload = (await response.json()) as {
+    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+  };
+  const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) return {};
+
+  try {
+    const json = JSON.parse(text) as { title?: string; priceKrw?: number | null };
+    return {
+      title: json.title,
+      priceKrw: json.priceKrw ?? undefined,
+    };
+  } catch {
+    return {};
+  }
 }
