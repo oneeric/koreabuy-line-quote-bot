@@ -1,0 +1,159 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #f7f7f4;
+  color: #171717;
+}
+
+h1 {
+  margin: 0 0 8px;
+  font-size: 32px;
+}
+
+h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.lead {
+  margin: 0 0 24px;
+  color: #5f625b;
+}
+
+.panel {
+  display: grid;
+  gap: 18px;
+  margin-top: 20px;
+  padding: 22px;
+  border: 1px solid #deded7;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(20, 20, 20, 0.06);
+}
+
+.panelHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.panelHeader p {
+  margin: 4px 0 0;
+  color: #666a60;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+label {
+  display: grid;
+  gap: 7px;
+  font-weight: 650;
+}
+
+label span {
+  font-size: 14px;
+}
+
+input,
+textarea {
+  width: 100%;
+  border: 1px solid #cfcfc7;
+  border-radius: 6px;
+  padding: 10px 11px;
+  font: inherit;
+  line-height: 1.5;
+  background: #fff;
+}
+
+textarea {
+  resize: vertical;
+}
+
+button {
+  border: 0;
+  border-radius: 6px;
+  padding: 11px 18px;
+  background: #1f2a24;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  background: #a9ada5;
+}
+
+pre {
+  overflow-x: auto;
+  margin: 8px 0 0;
+  padding: 12px;
+  border-radius: 6px;
+  background: #f1f1ed;
+}
+
+code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: #eeeeea;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: #4f5f53;
+}
+
+.badge {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.badge.ok {
+  background: #e7f6ed;
+  color: #176b3a;
+}
+
+.badge.warn {
+  background: #fff2d9;
+  color: #8a5700;
+}
+
+.notice {
+  border: 1px solid #eed28d;
+  border-radius: 6px;
+  padding: 12px;
+  background: #fff8e8;
+}
+
+.muted {
+  box-shadow: none;
+  background: transparent;
+}
+
+@media (max-width: 680px) {
+  h1 {
+    font-size: 26px;
+  }
+
+  .grid,
+  .panelHeader,
+  .actions {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

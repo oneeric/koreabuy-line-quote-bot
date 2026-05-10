@@ -29,6 +29,9 @@
 LINE_CHANNEL_SECRET=
 LINE_CHANNEL_ACCESS_TOKEN=
 GEMINI_API_KEY=
+ADMIN_TOKEN=請換成一組只有你知道的管理密碼
+UPSTASH_REDIS_REST_URL=
+UPSTASH_REDIS_REST_TOKEN=
 KRW_TO_TWD_RATE=0.025
 AGENCY_FEE_RATE=0.15
 DEFAULT_SHIPPING_TWD=200
@@ -53,6 +56,20 @@ https://你的網域.vercel.app/api/line/webhook
 ## Gemini 設定
 
 到 Google AI Studio 建立 API key，填入 `GEMINI_API_KEY`。沒有設定也可以跑，只是會少掉 AI 判讀 fallback。
+
+## 首頁費用設定
+
+首頁是管理 UI，可以調整匯率、代購費、預設運費、匯款資訊與購買須知。
+
+要讓首頁按下「儲存設定」後真的生效，需要在 Vercel 加三個環境變數：
+
+```txt
+ADMIN_TOKEN=一組只有你知道的管理密碼
+UPSTASH_REDIS_REST_URL=Upstash Redis REST URL
+UPSTASH_REDIS_REST_TOKEN=Upstash Redis REST Token
+```
+
+如果還沒設定 Upstash Redis，bot 仍會使用 Vercel 內的預設環境變數報價，只是首頁不能儲存。
 
 ## 本機開發
 

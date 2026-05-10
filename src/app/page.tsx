@@ -1,4 +1,11 @@
-export default function Home() {
+import { AdminSettings } from "@/app/AdminSettings";
+import { getQuoteConfig, hasWritableSettingsStore } from "@/lib/settings";
+
+export const dynamic = "force-dynamic";
+
+export default async function Home() {
+  const config = await getQuoteConfig();
+
   return (
     <main
       style={{
@@ -11,28 +18,18 @@ export default function Home() {
       }}
     >
       <h1>韓國代購 LINE 報價 Bot</h1>
-      <p>
-        本機網址 <code>localhost</code> 只能給你自己看，LINE 串接一定要用公開網址。
-      </p>
+      <p className="lead">修改報價用的匯率、代購費、運費與回覆文字。</p>
 
-      <h2>正式上線</h2>
-      <ol>
-        <li>把專案推到 GitHub。</li>
-        <li>到 Vercel 匯入 GitHub repo 並部署。</li>
-        <li>到 Vercel 設定環境變數。</li>
-        <li>
-          到 LINE Developers 把 webhook 設成：
-          <pre>https://你的專案.vercel.app/api/line/webhook</pre>
-        </li>
-      </ol>
+      <AdminSettings
+        initialConfig={config}
+        writable={hasWritableSettingsStore()}
+        protectedByToken={Boolean(process.env.ADMIN_TOKEN)}
+      />
 
-      <h2>臨時測試</h2>
-      <p>如果還沒上 Vercel，可以用 ngrok 或 Cloudflare Tunnel 把本機暫時公開。</p>
-      <pre>https://你的臨時網址/api/line/webhook</pre>
-
-      <h2>狀態檢查</h2>
-      <p>看到這頁代表網站服務正常。LINE 真正會打的是 webhook API：</p>
-      <pre>/api/line/webhook</pre>
+      <section className="panel muted">
+        <h2>LINE Webhook</h2>
+        <pre>https://koreabuy-line-quote-bot.vercel.app/api/line/webhook</pre>
+      </section>
     </main>
   );
 }

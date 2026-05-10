@@ -1,17 +1,9 @@
 import { extractProductInfo } from "@/lib/scraper";
+import { getQuoteConfig, type QuoteConfig } from "@/lib/settings";
 
 type QuoteInput = {
   url: string;
   manualKrwPrice?: number;
-};
-
-type QuoteConfig = {
-  krwToTwdRate: number;
-  agencyFeeRate: number;
-  defaultShippingTwd: number;
-  shopName: string;
-  bankInfo: string;
-  noticeText: string;
 };
 
 const URL_PATTERN = /https?:\/\/[^\s]+/i;
@@ -30,7 +22,7 @@ export async function buildQuoteReply(message: string) {
     ].join("\n");
   }
 
-  const config = getQuoteConfig();
+  const config = await getQuoteConfig();
   const product = input.manualKrwPrice
     ? {
         title: "客戶提供商品",
@@ -83,24 +75,6 @@ function parseQuoteInput(message: string): QuoteInput | null {
     url,
     manualKrwPrice,
   };
-}
-
-function getQuoteConfig(): QuoteConfig {
-  return {
-    krwToTwdRate: readNumberEnv("KRW_TO_TWD_RATE", 0.025),
-    agencyFeeRate: readNumberEnv("AGENCY_FEE_RATE", 0.15),
-    defaultShippingTwd: readNumberEnv("DEFAULT_SHIPPING_TWD", 200),
-    shopName: process.env.SHOP_NAME || "韓國代購",
-    bankInfo: process.env.BANK_INFO || "請私訊取得匯款資訊",
-    noticeText:
-      process.env.NOTICE_TEXT ||
-      "報價為預估金額，實際以付款當下匯率、商品庫存與韓國境內運費為準。下單後不接受取消，缺貨會全額退款。",
-  };
-}
-
-function readNumberEnv(name: string, fallback: number) {
-  const value = Number(process.env[name]);
-  return Number.isFinite(value) ? value : fallback;
 }
 
 function calculateQuote(priceKrw: number, config: QuoteConfig) {
