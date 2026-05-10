@@ -1,3 +1,5 @@
+import { hasGitHubWriteAccess, readPublicJsonFile, writeJsonFile } from "@/lib/github-json";
+
 export type QuoteConfig = {
   krwToTwdRate: number;
   agencyFeeRate: number;
@@ -48,7 +50,7 @@ export function normalizeQuoteConfig(input: QuoteConfig): QuoteConfig {
 }
 
 export function hasWritableSettingsStore() {
-  return Boolean(process.env.GITHUB_TOKEN && process.env.GITHUB_OWNER && process.env.GITHUB_REPO);
+  return hasGitHubWriteAccess();
 }
 
 function readNumberEnv(name: string, fallback: number) {
@@ -57,76 +59,18 @@ function readNumberEnv(name: string, fallback: number) {
 }
 
 async function readGitHubSettings(): Promise<Partial<QuoteConfig>> {
-  const owner = process.env.GITHUB_OWNER;
-  const repo = process.env.GITHUB_REPO;
-  if (!owner || !repo) return {};
-
-  const response = await fetch(
-    `https://raw.githubusercontent.com/${owner}/${repo}/main/${SETTINGS_PATH}`,
-    { cache: "no-store" },
-  );
-
-  if (response.status === 404) return {};
-  if (!response.ok) return {};
+  const settings = await readPublicJsonFile<QuoteConfig>(SETTINGS_PATH);
+  if (!settings) return {};
 
   try {
-    return normalizeQuoteConfig((await response.json()) as QuoteConfig);
+    return normalizeQuoteConfig(settings);
   } catch {
     return {};
   }
 }
 
 async function saveGitHubSettings(config: QuoteConfig) {
-  const token = process.env.GITHUB_TOKEN;
-  const owner = process.env.GITHUB_OWNER;
-  const repo = process.env.GITHUB_REPO;
-  if (!token || !owner || !repo) {
-    throw new Error("Missing GITHUB_TOKEN, GITHUB_OWNER or GITHUB_REPO");
-  }
-
-  const endpoint = `https://api.github.com/repos/${owner}/${repo}/contents/${SETTINGS_PATH}`;
-  const current = await getGitHubFile(endpoint, token);
-  const content = Buffer.from(`${JSON.stringify(config, null, 2)}\n`, "utf8").toString(
-    "base64",
-  );
-
-  const response = await fetch(endpoint, {
-    method: "PUT",
-    headers: {
-      Accept: "application/vnd.github+json",
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-      "X-GitHub-Api-Version": "2022-11-28",
-    },
-    body: JSON.stringify({
-      message: "Update quote settings",
-      content,
-      sha: current?.sha,
-      branch: "main",
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`GitHub settings update failed: ${await response.text()}`);
-  }
-}
-
-async function getGitHubFile(endpoint: string, token: string) {
-  const response = await fetch(endpoint, {
-    headers: {
-      Accept: "application/vnd.github+json",
-      Authorization: `Bearer ${token}`,
-      "X-GitHub-Api-Version": "2022-11-28",
-    },
-    cache: "no-store",
-  });
-
-  if (response.status === 404) return null;
-  if (!response.ok) {
-    throw new Error(`GitHub settings read failed: ${await response.text()}`);
-  }
-
-  return (await response.json()) as { sha: string };
+  await writeJsonFile(SETTINGS_PATH, config, "Update quote settings");
 }
 
 function ensurePositiveNumber(value: number, label: string) {

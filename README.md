@@ -13,6 +13,7 @@
 - Gemini JSON fallback
 - 報價公式：商品台幣 + 代購費 + 預估運費
 - Vercel 環境變數設定
+- 首頁最近報價紀錄
 
 ## 報價公式
 
@@ -35,6 +36,7 @@ GITHUB_TOKEN=
 GITHUB_OWNER=oneeric
 GITHUB_REPO=koreabuy-line-quote-bot
 SETTINGS_PATH=settings.json
+HISTORY_PATH=quote-history.json
 KRW_TO_TWD_RATE=0.025
 AGENCY_FEE_RATE=0.15
 DEFAULT_SHIPPING_TWD=200
@@ -74,6 +76,7 @@ GITHUB_TOKEN=GitHub fine-grained token，需有此 repo 的 Contents read/write 
 GITHUB_OWNER=oneeric
 GITHUB_REPO=koreabuy-line-quote-bot
 SETTINGS_PATH=settings.json
+HISTORY_PATH=quote-history.json
 ```
 
 如果還沒設定 GitHub token，bot 仍會使用 Vercel 內的預設環境變數報價，只是首頁不能儲存。

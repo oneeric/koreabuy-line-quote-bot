@@ -1,10 +1,12 @@
 import { AdminSettings } from "@/app/AdminSettings";
+import { QuoteHistory } from "@/app/QuoteHistory";
+import { getQuoteHistory } from "@/lib/history";
 import { getQuoteConfig, hasWritableSettingsStore } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const config = await getQuoteConfig();
+  const [config, history] = await Promise.all([getQuoteConfig(), getQuoteHistory()]);
 
   return (
     <main
@@ -30,6 +32,8 @@ export default async function Home() {
         <h2>LINE Webhook</h2>
         <pre>https://koreabuy-line-quote-bot.vercel.app/api/line/webhook</pre>
       </section>
+
+      <QuoteHistory records={history} />
     </main>
   );
 }

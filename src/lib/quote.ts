@@ -1,4 +1,5 @@
 import { extractProductInfo } from "@/lib/scraper";
+import { appendQuoteRecordBestEffort } from "@/lib/history";
 import { getQuoteConfig, type QuoteConfig } from "@/lib/settings";
 
 type QuoteInput = {
@@ -45,7 +46,7 @@ export async function buildQuoteReply(message: string) {
     ].join("\n");
   }
 
-  return renderQuoteReply(
+  return await renderQuoteReply(
     {
       title: product.title,
       priceKrw: product.priceKrw,
@@ -67,7 +68,7 @@ export async function buildImageQuoteReply(image: Buffer, mimeType: string) {
     ].join("\n");
   }
 
-  return renderQuoteReply(
+  return await renderQuoteReply(
     {
       title: product.title || "截圖商品",
       priceKrw: product.priceKrw,
@@ -77,7 +78,7 @@ export async function buildImageQuoteReply(image: Buffer, mimeType: string) {
   );
 }
 
-function renderQuoteReply(product: ProductForQuote, config: QuoteConfig) {
+async function renderQuoteReply(product: ProductForQuote, config: QuoteConfig) {
   const quote = calculateQuote(product.priceKrw, config);
   const sourceLabel = getSourceLabel(product.source);
   const lines = [
@@ -89,6 +90,14 @@ function renderQuoteReply(product: ProductForQuote, config: QuoteConfig) {
   if (product.url) {
     lines.push(`連結：${product.url}`);
   }
+
+  await appendQuoteRecordBestEffort({
+    source: product.source,
+    title: product.title || "商品",
+    url: product.url,
+    priceKrw: product.priceKrw,
+    ...quote,
+  });
 
   return [
     ...lines,

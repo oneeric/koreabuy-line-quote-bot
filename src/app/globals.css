@@ -144,6 +144,45 @@ code {
   background: transparent;
 }
 
+.empty {
+  margin: 0;
+  color: #666a60;
+}
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  min-width: 680px;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  border-bottom: 1px solid #e3e3dc;
+  padding: 10px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  color: #60645c;
+  font-size: 13px;
+}
+
+.productCell {
+  display: grid;
+  gap: 4px;
+}
+
+.productCell a {
+  color: #176b3a;
+  font-size: 13px;
+  font-weight: 700;
+}
+
 @media (max-width: 680px) {
   h1 {
     font-size: 26px;
