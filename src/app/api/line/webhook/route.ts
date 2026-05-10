@@ -20,21 +20,29 @@ type LineWebhookBody = {
 
 export async function POST(req: NextRequest) {
   const rawBody = await req.text();
+  console.log("LINE webhook received", { bytes: rawBody.length });
 
   if (!verifyLineSignature(rawBody, req.headers.get("x-line-signature"))) {
+    console.error("LINE webhook invalid signature");
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
   const body = JSON.parse(rawBody) as LineWebhookBody;
   const events = body.events ?? [];
+  console.log("LINE webhook signature ok", { events: events.length });
 
   await Promise.all(
     events.map(async (event) => {
       if (!isLineTextEvent(event)) return;
 
       try {
+        console.log("LINE text event", {
+          textLength: event.message.text.length,
+          replyTokenLength: event.replyToken.length,
+        });
         const replyText = await buildQuoteReply(event.message.text);
         await replyToLine(event.replyToken, replyText);
+        console.log("LINE reply sent");
       } catch (error) {
         console.error("Failed to handle LINE event", error);
       }
